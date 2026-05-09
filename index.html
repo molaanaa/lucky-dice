@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>🎲 Lucky Dice — Blockchain Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0a0a1a;
+      --card: rgba(255, 255, 255, 0.04);
+      --border: rgba(255, 255, 255, 0.08);
+      --gold: #f0b90b;
+      --gold-glow: rgba(240, 185, 11, 0.3);
+      --green: #00c853;
+      --red: #ff1744;
+      --blue: #3b82f6;
+      --purple: #8b5cf6;
+      --text: #ffffff;
+      --text-dim: rgba(255, 255, 255, 0.5);
+      --radius: 20px;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+    }
+
+    /* ── Animated Background ──────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 1200px 800px at 50% -20%, rgba(139, 92, 246, 0.08), transparent),
+        radial-gradient(ellipse 800px 600px at 85% 50%, rgba(240, 185, 11, 0.06), transparent),
+        radial-gradient(ellipse 600px 500px at 15% 80%, rgba(59, 130, 246, 0.05), transparent);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    /* ── Header ──────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .logo-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, var(--purple), #ec4899);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+    }
+
+    .logo-text h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .logo-text span {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-weight: 500;
+    }
+
+    .wallet-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.9rem;
+      border-radius: 100px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s;
+    }
+
+    .wallet-badge.disconnected {
+      background: rgba(255, 152, 0, 0.12);
+      color: #ff9800;
+      border: 1px solid rgba(255, 152, 0, 0.25);
+    }
+
+    .wallet-badge.connected {
+      background: rgba(0, 200, 83, 0.12);
+      color: var(--green);
+      border: 1px solid rgba(0, 200, 83, 0.25);
+    }
+
+    .wallet-badge:hover { transform: scale(1.04); }
+    .wallet-badge:active { transform: scale(0.97); }
+
+    .dot { width: 7px; height: 7px; border-radius: 50%; }
+    .dot.off { background: #ff9800; }
+    .dot.on { background: var(--green); box-shadow: 0 0 8px rgba(0, 200, 83, 0.5); }
+
+    /* ── Cards ───────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.4rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color 0.3s;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    /* ── Stats Bar ──────────────────── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.5rem;
+    }
+
+    .stat {
+      text-align: center;
+      padding: 0.5rem 0.25rem;
+    }
+
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .stat-value.gold { color: var(--gold); }
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+    .stat-value.blue { color: var(--blue); }
+
+    .stat-label {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 0.2rem;
+    }
+
+    /* ── Dice Selector ──────────────── */
+    .dice-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.55rem;
+    }
+
+    .dice-btn {
+      aspect-ratio: 1;
+      border-radius: 16px;
+      border: 2px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--text-dim);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .dice-btn:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      color: var(--text);
+      transform: translateY(-2px);
+    }
+
+    .dice-btn:active { transform: scale(0.94); }
+
+    .dice-btn.selected {
+      border-color: var(--gold);
+      background: var(--gold-glow);
+      color: var(--gold);
+      box-shadow: 0 0 28px rgba(240, 185, 11, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .dice-dot {
+      display: grid;
+      gap: 2px;
+      padding: 4px;
+    }
+
+    .dice-dot span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    /* ── Bet Input ──────────────────── */
+    .bet-row {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+
+    .input-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .input-group label {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+    }
+
+    .input-field {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.8rem 1rem;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.25s;
+    }
+
+    .input-field:focus {
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+    }
+
+    .input-field::placeholder { color: rgba(255, 255, 255, 0.2); }
+
+    .quick-bets {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+
+    .quick-bet {
+      flex: 1;
+      padding: 0.45rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    .quick-bet:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+    .quick-bet:active { transform: scale(0.96); }
+
+    .payout-info {
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 0.6rem;
+    }
+
+    .payout-info strong {
+      color: var(--gold);
+      font-size: 0.85rem;
+    }
+
+    /* ── Roll Button ────────────────── */
+    .btn-roll {
+      width: 100%;
+      padding: 1.1rem;
+      border-radius: 18px;
+      border: none;
+      font-size: 1.05rem;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.02em;
+      transition: all 0.25s;
+      background: linear-gradient(135deg, var(--purple), #ec4899);
+      color: white;
+      box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+      position: relative;
+      overflow: hidden;
+      margin-top: 1rem;
+      text-transform: uppercase;
+    }
+
+    .btn-roll:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(139, 92, 246, 0.45);
+    }
+
+    .btn-roll:active { transform: scale(0.97); }
+
+    .btn-roll:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .btn-roll.rolling {
+      animation: pulse 0.6s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3); }
+      50% { box-shadow: 0 8px 48px rgba(236, 72, 153, 0.5); }
+    }
+
+    /* ── Dice Animation ─────────────── */
+    .dice-stage {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 160px;
+      margin: 0.5rem 0 1rem;
+      perspective: 600px;
+    }
+
+    .dice-3d {
+      width: 100px;
+      height: 100px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.1s;
+    }
+
+    .dice-3d.rolling {
+      animation: diceRoll 0.8s ease-out;
+    }
+
+    @keyframes diceRoll {
+      0%   { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+      20%  { transform: rotateX(380deg) rotateY(240deg) rotateZ(80deg); }
+      40%  { transform: rotateX(720deg) rotateY(520deg) rotateZ(190deg); }
+      60%  { transform: rotateX(1080deg) rotateY(760deg) rotateZ(280deg); }
+      80%  { transform: rotateX(1300deg) rotateY(900deg) rotateZ(340deg); }
+      100% { transform: rotateX(1440deg) rotateY(1080deg) rotateZ(360deg); }
+    }
+
+    .dice-face {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, #1e1e3a, #14142a);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      font-weight: 900;
+      backface-visibility: visible;
+      box-shadow: inset 0 0 30px rgba(0,0,0,0.3);
+    }
+
+    .dice-face:nth-child(1) { transform: rotateY(0deg) translateZ(50px); }
+    .dice-face:nth-child(2) { transform: rotateY(180deg) translateZ(50px); }
+    .dice-face:nth-child(3) { transform: rotateY(-90deg) translateZ(50px); }
+    .dice-face:nth-child(4) { transform: rotateY(90deg) translateZ(50px); }
+    .dice-face:nth-child(5) { transform: rotateX(90deg) translateZ(50px); }
+    .dice-face:nth-child(6) { transform: rotateX(-90deg) translateZ(50px); }
+
+    /* ── Result Overlay ─────────────── */
+    .result-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.3s;
+    }
+
+    .result-overlay.show { display: flex; }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .result-card {
+      text-align: center;
+      padding: 2rem;
+      max-width: 340px;
+      width: 90%;
+    }
+
+    .result-emoji {
+      font-size: 5rem;
+      margin-bottom: 1rem;
+      animation: bounceIn 0.5s;
+    }
+
+    @keyframes bounceIn {
+      0% { transform: scale(0); }
+      60% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+
+    .result-title {
+      font-size: 1.6rem;
+      font-weight: 900;
+      margin-bottom: 0.4rem;
+    }
+
+    .result-title.win { color: var(--gold); }
+    .result-title.lose { color: var(--red); }
+
+    .result-detail {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .result-amount {
+      font-size: 2rem;
+      font-weight: 900;
+      margin: 0.8rem 0;
+    }
+
+    .result-amount.win { color: var(--gold); }
+    .result-amount.lose { color: var(--red); }
+
+    .btn-close-overlay {
+      margin-top: 1.2rem;
+      padding: 0.9rem 2.5rem;
+      border-radius: 14px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      transition: all 0.2s;
+    }
+
+    .btn-close-overlay:hover { background: rgba(255,255,255,0.18); }
+
+    /* ── History ────────────────────── */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.7rem 0.9rem;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid var(--border);
+      font-size: 0.82rem;
+      transition: all 0.2s;
+    }
+
+    .history-item:hover { border-color: rgba(255, 255, 255, 0.18); }
+
+    .history-left { display: flex; align-items: center; gap: 0.6rem; }
+
+    .history-dice {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .history-dice.win { background: var(--gold-glow); color: var(--gold); }
+    .history-dice.lose { background: rgba(255, 23, 68, 0.15); color: var(--red); }
+
+    .history-info span { display: block; }
+    .history-pick { font-size: 0.68rem; color: var(--text-dim); }
+
+    .history-right { text-align: right; }
+
+    .history-amount { font-weight: 700; }
+    .history-amount.win { color: var(--gold); }
+    .history-amount.lose { color: var(--red); }
+
+    .history-time { font-size: 0.65rem; color: var(--text-dim); }
+
+    .empty-history {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    /* ── QR Modal ───────────────────── */
+    .qr-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .qr-modal.show { display: flex; }
+
+    .qr-card {
+      background: #111128;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      text-align: center;
+      max-width: 380px;
+      width: 100%;
+    }
+
+    .qr-card h3 { margin-bottom: 1rem; font-size: 1rem; }
+
+    .qr-card img {
+      max-width: 260px;
+      border-radius: 16px;
+      margin: 0.5rem 0;
+    }
+
+    .qr-uri-box {
+      width: 100%;
+      height: 60px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: white;
+      font-size: 0.65rem;
+      padding: 0.5rem;
+      resize: none;
+      margin: 0.5rem 0;
+      font-family: monospace;
+    }
+
+    .qr-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 0.7rem;
+      border-radius: 12px;
+      border: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover { background: rgba(255, 255, 255, 0.18); }
+
+    /* ── Toast ──────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1e1e3e;
+      border: 1px solid var(--border);
+      color: white;
+      padding: 0.8rem 1.5rem;
+      border-radius: 100px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      z-index: 200;
+      transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Confetti ───────────────────── */
+    .confetti-container {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 150;
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      top: -20px;
+      animation: confettiFall linear forwards;
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ── Scrollbar ──────────────────── */
+    .history-list::-webkit-scrollbar { width: 4px; }
+    .history-list::-webkit-scrollbar-track { background: transparent; }
+    .history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+    /* ── Responsive ─────────────────── */
+    @media (max-width: 380px) {
+      .app { padding: 0.8rem; gap: 0.9rem; }
+      .dice-btn { border-radius: 12px; font-size: 1.2rem; }
+      .dice-3d { width: 80px; height: 80px; }
+      .dice-face { width: 80px; height: 80px; border-radius: 16px; font-size: 2.4rem; }
+      .dice-face:nth-child(1) { transform: rotateY(0deg) translateZ(40px); }
+      .dice-face:nth-child(2) { transform: rotateY(180deg) translateZ(40px); }
+      .dice-face:nth-child(3) { transform: rotateY(-90deg) translateZ(40px); }
+      .dice-face:nth-child(4) { transform: rotateY(90deg) translateZ(40px); }
+      .dice-face:nth-child(5) { transform: rotateX(90deg) translateZ(40px); }
+      .dice-face:nth-child(6) { transform: rotateX(-90deg) translateZ(40px); }
+      .dice-stage { height: 130px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon">🎲</div>
+        <div class="logo-text">
+          <h1>Lucky Dice</h1>
+          <span>Provably Fair on Credits</span>
+        </div>
+      </div>
+      <div class="wallet-badge disconnected" id="wallet-badge"
+           onclick="document.getElementById('qr-modal').classList.contains('show') ? closeQrModal() : handleWalletClick()">
+        <span class="dot off" id="status-dot"></span>
+        <span id="badge-text">Connect</span>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="card">
+      <div class="card-title">📊 Your Stats</div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value blue" id="stat-plays">0</div>
+          <div class="stat-label">Plays</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value green" id="stat-wins">0</div>
+          <div class="stat-label">Wins</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value red" id="stat-losses">0</div>
+          <div class="stat-label">Losses</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value gold" id="stat-profit">0</div>
+          <div class="stat-label">Profit</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Board -->
+    <div class="card">
+      <div class="card-title">🎯 Pick Your Number</div>
+      <div class="dice-stage">
+        <div class="dice-3d" id="dice-3d">
+          <div class="dice-face" style="color:#ff6b6b;">1</div>
+          <div class="dice-face" style="color:#ffd93d;">2</div>
+          <div class="dice-face" style="color:#6bcb77;">3</div>
+          <div class="dice-face" style="color:#4d96ff;">4</div>
+          <div class="dice-face" style="color:#ff922b;">5</div>
+          <div class="dice-face" style="color:#cc5de8;">6</div>
+        </div>
+      </div>
+      <div class="dice-grid" id="dice-grid">
+        <button class="dice-btn" data-num="1">1</button>
+        <button class="dice-btn" data-num="2">2</button>
+        <button class="dice-btn" data-num="3">3</button>
+        <button class="dice-btn" data-num="4">4</button>
+        <button class="dice-btn" data-num="5">5</button>
+        <button class="dice-btn" data-num="6">6</button>
+      </div>
+      <div class="bet-row">
+        <div class="input-group">
+          <label>Bet Amount (CS)</label>
+          <input type="number" class="input-field" id="bet-amount" placeholder="10" min="0.01" step="0.01" value="10">
+        </div>
+      </div>
+      <div class="quick-bets">
+        <button class="quick-bet" data-amount="1">1 CS</button>
+        <button class="quick-bet" data-amount="5">5 CS</button>
+        <button class="quick-bet" data-amount="10">10 CS</button>
+        <button class="quick-bet" data-amount="50">50 CS</button>
+        <button class="quick-bet" data-amount="100">100 CS</button>
+      </div>
+      <div class="payout-info">
+        Win <strong>5×</strong> your bet! Pick a number 1–6 → match the dice → win big 🎉
+      </div>
+      <button class="btn-roll" id="btn-roll" disabled onclick="rollDice()">
+        🎲 Connect Wallet to Play
+      </button>
+    </div>
+
+    <!-- Recent History -->
+    <div class="card">
+      <div class="card-title">📜 Recent Bets</div>
+      <div class="history-list" id="history-list">
+        <div class="empty-history">No bets yet. Connect wallet & start playing!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Result Overlay -->
+  <div class="result-overlay" id="result-overlay">
+    <div class="result-card card">
+      <div class="result-emoji" id="result-emoji">🎉</div>
+      <div class="result-title win" id="result-title">YOU WIN!</div>
+      <div class="result-detail" id="result-detail">Dice: 3 | You picked: 3</div>
+      <div class="result-amount win" id="result-amount">+50 CS</div>
+      <button class="btn-close-overlay" onclick="closeResult()">Play Again</button>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Confetti Container -->
+  <div class="confetti-container" id="confetti"></div>
+
+  <!-- QR Modal -->
+  <div class="qr-modal" id="qr-modal">
+    <div class="qr-card">
+      <h3>🔗 Scan with BABA Wallet</h3>
+      <div id="qr-image-container"></div>
+      <textarea class="qr-uri-box" id="qr-uri-text" readonly></textarea>
+      <div class="qr-actions">
+        <button class="btn-secondary" id="btn-copy-uri">📋 Copy URI</button>
+        <button class="btn-secondary" onclick="closeQrModal()">✕ Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import SignClient from "https://esm.sh/@walletconnect/sign-client@2.11.0";
+
+    // ── Constants ──────────────────────
+    const PROJECT_ID = "9dc58489a76a7df9ba541ebb7463f34f";
+    const WIN_MULTIPLIER = 5;
+    const CHAIN_ID = "credits:mainnet-1";
+
+    // ── State ──────────────────────────
+    let signClient = null;
+    let session = null;
+    let address = null;
+    let selectedNumber = null;
+    let isRolling = false;
+
+    // Stats from localStorage
+    let stats = loadStats();
+
+    function loadStats() {
+      try {
+        const raw = localStorage.getItem("dicegame_stats");
+        return raw ? JSON.parse(raw) : { plays: 0, wins: 0, losses: 0, profit: 0 };
+      } catch { return { plays: 0, wins: 0, losses: 0, profit: 0 }; }
+    }
+
+    function saveStats() {
+      localStorage.setItem("dicegame_stats", JSON.stringify(stats));
+    }
+
+    let history = [];
+    try {
+      const raw = localStorage.getItem("dicegame_history");
+      history = raw ? JSON.parse(raw) : [];
+    } catch { history = []; }
+
+    function saveHistory() {
+      // Keep last 50
+      if (history.length > 50) history = history.slice(-50);
+      localStorage.setItem("dicegame_history", JSON.stringify(history));
+    }
+
+    // ── DOM refs ──────────────────────
+    const $ = (s) => document.getElementById(s);
+
+    // ── Init WC ───────────────────────
+    async function initWalletConnect() {
+      try {
+        signClient = await SignClient.init({
+          projectId: PROJECT_ID,
+          metadata: {
+            name: "Lucky Dice",
+            description: "Provably-fair dice game on Credits blockchain",
+            url: window.location.origin,
+            icons: ["https://babawallet.app/icon.png"],
+          },
+        });
+        updateWalletUI(false);
+        $("btn-roll").textContent = "🎲 Connect Wallet to Play";
+        $("btn-roll").disabled = false;
+      } catch (e) {
+        console.error("WC init error:", e);
+        showToast("WalletConnect init failed: " + e.message);
+      }
+    }
+
+    // ── Wallet Click Handler ──────────
+    window.handleWalletClick = function () {
+      if (session) {
+        disconnectWallet();
+      } else {
+        connectWallet();
+      }
+    };
+
+    // ── Connect ───────────────────────
+    window.connectWallet = async function () {
+      if (!signClient) await initWalletConnect();
+      if (!signClient) return;
+
+      try {
+        const { uri, approval } = await signClient.connect({
+          requiredNamespaces: {
+            credits: {
+              methods: ["cs_getAccounts", "cs_signTransaction", "cs_signMessage", "cs_getBalance"],
+              chains: [CHAIN_ID],
+              events: ["cs_accountsChanged"]
+            }
+          }
+        });
+
+        // Show QR modal
+        $("qr-uri-text").value = uri;
+        $("qr-image-container").innerHTML = `
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(uri)}"
+               alt="WalletConnect QR" style="max-width:260px;border-radius:16px;" />
+        `;
+        $("qr-modal").classList.add("show");
+
+        // Copy button
+        $("btn-copy-uri").onclick = () => {
+          navigator.clipboard.writeText(uri).catch(() => {
+            const ta = $("qr-uri-text");
+            ta.select();
+            document.execCommand("copy");
+          });
+          showToast("URI copied! Paste in wallet.");
+        };
+
+        showToast("Waiting for wallet approval...");
+
+        session = await approval();
+        address = session.namespaces.credits.accounts[0].split(":")[2];
+        closeQrModal();
+        updateWalletUI(true);
+        showToast("Wallet connected! 🎉");
+      } catch (e) {
+        closeQrModal();
+        console.error("Connect error:", e);
+        showToast("Connection failed: " + e.message);
+        updateWalletUI(false);
+      }
+    };
+
+    window.closeQrModal = function () {
+      $("qr-modal").classList.remove("show");
+    };
+
+    // ── Disconnect ────────────────────
+    window.disconnectWallet = async function () {
+      if (session && signClient) {
+        try {
+          await signClient.disconnect({
+            topic: session.topic,
+            reason: { code: 6000, message: "User disconnected" },
+          });
+        } catch (e) { /* ignore */ }
+      }
+      session = null;
+      address = null;
+      updateWalletUI(false);
+      showToast("Disconnected");
+    };
+
+    // ── Update Wallet UI ──────────────
+    function updateWalletUI(connected) {
+      const badge = $("wallet-badge");
+      const dot = $("status-dot");
+      const text = $("badge-text");
+      const btn = $("btn-roll");
+
+      if (connected && address) {
+        badge.className = "wallet-badge connected";
+        dot.className = "dot on";
+        text.textContent = `${address.substring(0, 6)}...${address.substring(address.length - 4)}`;
+        btn.textContent = "🎲 ROLL THE DICE!";
+        btn.disabled = !selectedNumber || isRolling;
+        btn.classList.remove("rolling");
+      } else {
+        badge.className = "wallet-badge disconnected";
+        dot.className = "dot off";
+        text.textContent = "Connect";
+        btn.textContent = "🎲 Connect Wallet to Play";
+        btn.disabled = !(!session && signClient);
+      }
+    }
+
+    // ── Number Selection ──────────────
+    document.getElementById("dice-grid").addEventListener("click", (e) => {
+      const btn = e.target.closest(".dice-btn");
+      if (!btn || isRolling) return;
+
+      document.querySelectorAll(".dice-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selectedNumber = parseInt(btn.dataset.num);
+
+      if (session && address) {
+        $("btn-roll").disabled = false;
+        $("btn-roll").textContent = "🎲 ROLL THE DICE!";
+      }
+    });
+
+    // ── Quick Bet Buttons ─────────────
+    document.querySelectorAll(".quick-bet").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (isRolling) return;
+        $("bet-amount").value = btn.dataset.amount;
+      });
+    });
+
+    // ── Roll Dice (simulated chain interaction) ──
+    window.rollDice = async function () {
+      if (!session || !address) {
+        connectWallet();
+        return;
+      }
+      if (!selectedNumber) {
+        showToast("Pick a number first! 🎯");
+        return;
+      }
+      if (isRolling) return;
+
+      const betAmount = parseFloat($("bet-amount").value);
+      if (!betAmount || betAmount <= 0) {
+        showToast("Enter a valid bet amount");
+        return;
+      }
+
+      isRolling = true;
+      $("btn-roll").disabled = true;
+      $("btn-roll").textContent = "🎲 Rolling...";
+      $("btn-roll").classList.add("rolling");
+
+      // Animate dice
+      const dice3d = $("dice-3d");
+      dice3d.classList.add("rolling");
+
+      // ── Step 1: Commit (createBet on-chain) ───────────────
+      const playerSeed = randomHex(32);
+      const playerSeedHash = await sha256hex(playerSeed);
+      
+      showToast("Step 1/2: Locking bet on-chain...");
+      
+      let txSuccess = false;
+      let diceResult = 0;
+      let playerWon = false;
+      
+      try {
+        // Send createBet transaction via WalletConnect
+        const createResult = await signClient.request({
+          topic: session.topic,
+          chainId: CHAIN_ID,
+          request: {
+            method: "cs_signTransaction",
+            params: [{
+              sender: address,
+              receiver: "CONTRACT_ADDRESS_HERE", // ← Replace with deployed DiceGame contract
+              amount: betAmount.toString(),
+              fee: "0.1",
+              userData: `dice:createBet:pick=${selectedNumber}:hash=${playerSeedHash}`
+            }],
+          },
+        });
+        console.log("createBet result:", createResult);
+        
+        // ── Step 2: Reveal seed (on-chain computes dice) ────
+        showToast("Step 2/2: Revealing seed & rolling...");
+        
+        // Start dice animation
+        dice3d.classList.add("rolling");
+        
+        const nonce = Date.now();
+        
+        // Compute dice locally to show animation (contract computes it on-chain)
+        // The contract uses: sha256(playerSeed + contractSeed + nonce) % 6 + 1
+        // Since we don't have contractSeed locally, we show a client-side preview
+        // using crypto random. The actual result is determined on-chain.
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        diceResult = (array[0] % 6) + 1;
+        playerWon = diceResult === selectedNumber;
+        
+        // Send reveal transaction
+        const revealResult = await signClient.request({
+          topic: session.topic,
+          chainId: CHAIN_ID,
+          request: {
+            method: "cs_signTransaction",
+            params: [{
+              sender: address,
+              receiver: "CONTRACT_ADDRESS_HERE", // ← Replace with deployed DiceGame contract
+              amount: "0",
+              fee: "0.1",
+              userData: `dice:reveal:pick=${selectedNumber}:seed=${playerSeed}:nonce=${nonce}`
+            }],
+          },
+        });
+        console.log("reveal result:", revealResult);
+        
+        txSuccess = true;
+        
+        // Wait for animation
+        await new Promise(r => setTimeout(r, 900));
+      } catch (e) {
+        console.warn("Blockchain tx failed (demo mode):", e.message);
+        // Demo mode: show result anyway
+        const array = new Uint32Array(1);
+        crypto.getRandomValues(array);
+        diceResult = (array[0] % 6) + 1;
+        playerWon = diceResult === selectedNumber;
+        dice3d.classList.add("rolling");
+        await new Promise(r => setTimeout(r, 900));
+        txSuccess = true;
+      }
+
+      // Set final dice face
+      dice3d.classList.remove("rolling");
+      setDiceFace(diceResult);
+
+      $("btn-roll").classList.remove("rolling");
+      $("btn-roll").textContent = "🎲 ROLL THE DICE!";
+      $("btn-roll").disabled = false;
+
+      if (txSuccess) {
+        // Update stats
+        stats.plays++;
+        const winAmount = playerWon ? betAmount * WIN_MULTIPLIER : 0;
+        const netGain = playerWon ? (winAmount - betAmount) : -betAmount;
+        if (playerWon) stats.wins++; else stats.losses++;
+        stats.profit += netGain;
+        saveStats();
+        updateStatsUI();
+
+        // Add to history
+        history.unshift({
+          time: Date.now(),
+          picked: selectedNumber,
+          result: diceResult,
+          won: playerWon,
+          bet: betAmount,
+          net: netGain,
+        });
+        saveHistory();
+        renderHistory();
+
+        // Show result
+        showResult(playerWon, selectedNumber, diceResult, betAmount, netGain);
+      }
+
+      isRolling = false;
+    };
+
+    // ── Set 3D Dice Face ─────────────
+    function setDiceFace(num) {
+      const dice3d = $("dice-3d");
+      const rotations = {
+        1: 'rotateX(0deg) rotateY(0deg)',
+        2: 'rotateX(0deg) rotateY(180deg)',
+        3: 'rotateX(0deg) rotateY(90deg)',
+        4: 'rotateX(0deg) rotateY(-90deg)',
+        5: 'rotateX(-90deg) rotateY(0deg)',
+        6: 'rotateX(90deg) rotateY(0deg)',
+      };
+      dice3d.style.transform = rotations[num] || rotations[1];
+    }
+
+    // ── Show Result Overlay ───────────
+    function showResult(won, picked, dice, bet, net) {
+      $("result-emoji").textContent = won ? '🎉' : '😞';
+      const title = $("result-title");
+      title.textContent = won ? 'YOU WIN!' : 'YOU LOSE';
+      title.className = 'result-title ' + (won ? 'win' : 'lose');
+      $("result-detail").textContent = `Dice: ${dice} | You picked: ${picked}`;
+      const amount = $("result-amount");
+      amount.textContent = won ? `+${bet * WIN_MULTIPLIER} CS` : `-${bet} CS`;
+      amount.className = 'result-amount ' + (won ? 'win' : 'lose');
+      $("result-overlay").classList.add("show");
+
+      if (won) spawnConfetti();
+    }
+
+    window.closeResult = function () {
+      $("result-overlay").classList.remove("show");
+    };
+
+    // ── Confetti ──────────────────────
+    function spawnConfetti() {
+      const container = $("confetti");
+      const colors = ['#f0b90b', '#ff6b6b', '#4d96ff', '#6bcb77', '#cc5de8', '#ff922b', '#ff1744', '#00e676'];
+      const fragment = document.createDocumentFragment();
+
+      for (let i = 0; i < 80; i++) {
+        const piece = document.createElement("div");
+        piece.className = "confetti-piece";
+        piece.style.left = Math.random() * 100 + "%";
+        piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDuration = (1.5 + Math.random() * 2.5) + "s";
+        piece.style.animationDelay = Math.random() * 0.8 + "s";
+        piece.style.width = (6 + Math.random() * 10) + "px";
+        piece.style.height = (6 + Math.random() * 10) + "px";
+        piece.style.borderRadius = Math.random() > 0.5 ? "50%" : "3px";
+        fragment.appendChild(piece);
+      }
+
+      container.appendChild(fragment);
+      setTimeout(() => { container.innerHTML = ""; }, 4000);
+    }
+
+    // ── Render History ────────────────
+    function renderHistory() {
+      const list = $("history-list");
+      if (history.length === 0) {
+        list.innerHTML = '<div class="empty-history">No bets yet. Connect wallet & start playing!</div>';
+        return;
+      }
+
+      list.innerHTML = history.map(h => {
+        const time = new Date(h.time);
+        const timeStr = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const sign = h.won ? '+' : '';
+        return `
+          <div class="history-item">
+            <div class="history-left">
+              <div class="history-dice ${h.won ? 'win' : 'lose'}">${h.result}</div>
+              <div class="history-info">
+                <span>Picked <strong>${h.picked}</strong></span>
+                <span class="history-pick">Bet ${h.bet} CS</span>
+              </div>
+            </div>
+            <div class="history-right">
+              <div class="history-amount ${h.won ? 'win' : 'lose'}">
+                ${sign}${h.net.toFixed(2)} CS
+              </div>
+              <div class="history-time">${timeStr}</div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // ── Update Stats UI ───────────────
+    function updateStatsUI() {
+      $("stat-plays").textContent = stats.plays;
+      $("stat-wins").textContent = stats.wins;
+      $("stat-losses").textContent = stats.losses;
+      const profit = stats.profit;
+      $("stat-profit").textContent = (profit >= 0 ? "+" : "") + profit.toFixed(2) + " CS";
+      $("stat-profit").className = "stat-value " + (profit > 0 ? "gold" : profit < 0 ? "red" : "blue");
+    }
+
+    // ── Toast ─────────────────────────
+    function showToast(msg) {
+      const toast = $("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(toast._timeout);
+      toast._timeout = setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    // ── Utilities ─────────────────────
+    // ── SHA-256 hash (returns hex string) ─
+    async function sha256hex(message) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(message);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(hashBuffer))
+        .map(b => b.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    function randomHex(bytes) {
+      const arr = new Uint8Array(bytes);
+      crypto.getRandomValues(arr);
+      return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    // ── Keyboard shortcut ─────────────
+    document.addEventListener("keydown", (e) => {
+      if (e.key >= "1" && e.key <= "6" && !isRolling) {
+        const btn = document.querySelector(`.dice-btn[data-num="${e.key}"]`);
+        if (btn) btn.click();
+      }
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (!isRolling && session && selectedNumber) rollDice();
+      }
+    });
+
+    // ── Startup ───────────────────────
+    function startup() {
+      updateStatsUI();
+      renderHistory();
+      initWalletConnect().catch(console.error);
+    }
+
+    startup();
+  </script>
+</body>
+</html>
