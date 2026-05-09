@@ -945,12 +945,20 @@
         btn.textContent = "🎲 ROLL THE DICE!";
         btn.disabled = !selectedNumber || isRolling;
         btn.classList.remove("rolling");
-      } else {
+      } else if (signClient) {
+        // WalletConnect is ready but not connected — enable connect button
         badge.className = "wallet-badge disconnected";
         dot.className = "dot off";
         text.textContent = "Connect";
         btn.textContent = "🎲 Connect Wallet to Play";
-        btn.disabled = !(!session && signClient);
+        btn.disabled = false;
+      } else {
+        // Still initializing
+        badge.className = "wallet-badge disconnected";
+        dot.className = "dot off";
+        text.textContent = "Loading...";
+        btn.textContent = "⏳ Initializing...";
+        btn.disabled = true;
       }
     }
 
@@ -1023,7 +1031,7 @@
             method: "cs_signTransaction",
             params: [{
               sender: address,
-              receiver: "CONTRACT_ADDRESS_HERE", // ← Replace with deployed DiceGame contract
+              receiver: "8brNzKJ1U6GdvnGdQ1ac6fZMjog4BU9x5GAq899usj5a",
               amount: betAmount.toString(),
               fee: "0.1",
               userData: `dice:createBet:pick=${selectedNumber}:hash=${playerSeedHash}`
@@ -1057,7 +1065,7 @@
             method: "cs_signTransaction",
             params: [{
               sender: address,
-              receiver: "CONTRACT_ADDRESS_HERE", // ← Replace with deployed DiceGame contract
+              receiver: "8brNzKJ1U6GdvnGdQ1ac6fZMjog4BU9x5GAq899usj5a",
               amount: "0",
               fee: "0.1",
               userData: `dice:reveal:pick=${selectedNumber}:seed=${playerSeed}:nonce=${nonce}`
